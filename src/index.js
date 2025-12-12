@@ -159,6 +159,45 @@ class LineaManager {
   }
 }
 
+class InputRowCol{
+  constructor(inputText) {
+    this.inputText = inputText;
+  }
+
+  normalizar() {
+      return this.inputText.split(/\s+/).map(Number);
+  }
+  
+  estaDentro(numero, desde, hasta, estado){
+    if (estado === 'CERRADO') {
+      return numero>=desde && numero<=hasta;
+    }
+    return false;
+  }
+
+  valid() {
+      if (!/\d\s+\d/.test(this.inputText)){ 
+        return false;
+      }
+
+      const [row, col] = this.normalizar();
+
+      if (isNaN(row) || isNaN(col)) {
+        return false;
+      } else if (!this.estaDentro(row, 0, 2, 'CERRADO') || !this.estaDentro(col, 0, 2, 'CERRADO')) {
+        return false;
+      }
+
+      return true;
+  }
+
+  getInput() {
+    if (!this.valid()) return null;
+    return this.normalizar();
+  }
+}
+
+
 class UIManager extends EventEmitter {
   constructor() {
     super();
@@ -214,19 +253,21 @@ class UIManager extends EventEmitter {
 
   promptPlayer() {
     readline.question('Ingresa fila y columna (ej: 0 1): ', (input) => {
-      const [row, col] = input.trim().split(' ').map(Number);
-
+      
       if (input.toLowerCase() === 'exit') {
         console.log('¡Hasta luego! 👋');
         readline.close();
         return;
       }
-
-      if (isNaN(row) || isNaN(col)) {
+      const inputRowCol = new InputRowCol(input);
+      
+      if (!inputRowCol.valid()) {
         console.log('❌ Por favor ingresa números válidos (ej: 0 1)');
         this.promptPlayer();
         return;
       }
+
+      const[row, col] = inputRowCol.getInput();
 
       // Emitir el evento de movimiento
       this.emit('move', row, col);
@@ -451,8 +492,8 @@ class TicTacToeFunny extends UIManager {
     console.log('🎮 TIC TAC TOE - EventEmitter Edition');
     console.log('=====================================');
     console.log('Menu principal');
-    console.log(" ", 'i.- Jugar juego');
-    console.log(" ", 'ii.- Configurar player´s');
+    console.log(" ", '  i.- Jugar juego');
+    console.log(" ", ' ii.- Configurar player´s');
     console.log(" ", 'iii.- Salir');
 
     readline.question('\n¿Elije una opcion? (i-iii): ', (answer) => {
@@ -477,11 +518,11 @@ class TicTacToeFunny extends UIManager {
 
   submenu() {
     console.log('Opciones del submenu');
-    console.log(" ", 'i.- Hacer movimiento');
-    console.log(" ", 'ii.- Deshacer movimiento(ctrl+z)');
+    console.log(" ", '  i.- Hacer movimiento');
+    console.log(" ", ' ii.- Deshacer movimiento(ctrl+z)');
     console.log(" ", 'iii.- Rehacer movimiento(ctrl+y)');
-    console.log(" ", 'iv.- Historial de movimiento');
-    console.log(" ", 'v.- Atras');
+    console.log(" ", ' iv.- Historial de movimiento');
+    console.log(" ", '  v.- Atras');
   }
 
   promptSubmenu() {
