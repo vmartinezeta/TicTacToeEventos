@@ -190,12 +190,7 @@ class UIManager extends EventEmitter {
       const command = new MoveCommand(this.board, this.board.currentPlayer, row, col);
       command.execute();
       this.commandHistory.push(command); // Guardamos el comando en el historial
-      if (this.gameActive) {
-        this.checkGameStatus();
-        if (this.gameActive) {
-          this.board.switchPlayer();
-        }
-      }
+
       this.emit('boardUpdated');
     } catch (error) {
       this.emit('invalidMove', error.message);
@@ -218,7 +213,6 @@ class UIManager extends EventEmitter {
   }
 
   promptPlayer() {
-    console.log(`Turno del jugador: ${this.board.currentPlayer.simbolo}`);
     readline.question('Ingresa fila y columna (ej: 0 1): ', (input) => {
       const [row, col] = input.trim().split(' ').map(Number);
 
@@ -270,6 +264,7 @@ class TicTacToe extends UIManager {
   }
 
   setupEventListeners() {
+
     this.on('move', (row, col) => {
       this.makeMove(row, col);
     });
@@ -280,8 +275,18 @@ class TicTacToe extends UIManager {
     });
 
     this.on('boardUpdated', () => {
+      console.log(`Haz colocado: ${this.board.currentPlayer.simbolo}`);
       this.printBoard();
-      this.promptSubMenu();
+
+      if (this.gameActive) {
+        this.checkGameStatus();
+        if (this.gameActive) {
+          this.submenu();
+          this.board.switchPlayer();
+          console.log(`Turno del jugador: ${this.board.currentPlayer.simbolo}`);
+          this.processSubmenu();
+        }
+      }
     });
 
     this.on('gameWon', (player) => {
@@ -312,7 +317,7 @@ class TicTacToe extends UIManager {
 
     readline.question('\n¿Elije una opcion? (1-3): ', (answer) => {
       if (answer === '1') {
-        this.promptBoardSubMenu();
+        this.promptSubmenuInicial();
       } else if (answer === '3') {
         console.log('¡Gracias por jugar! 👋');
         readline.close();
@@ -323,31 +328,29 @@ class TicTacToe extends UIManager {
 
   }
 
-  promptBoardSubMenu() {
+  promptSubmenuInicial() {
     this.printBoard();
+    this.submenu();
+    console.log(`Turno del jugador: ${this.board.currentPlayer.simbolo}`);
+    this.processSubmenu();
+  }
+
+  submenu() {
     console.log('Opciones del submenu');
     console.log(" ", '1.- Hacer movimiento');
     console.log(" ", '2.- Deshacer movimiento(ctrl+z)');
     console.log(" ", '3.- Rehacer movimiento(ctrl+y)');
     console.log(" ", '4.- Historial de movimiento');
     console.log(" ", '5.- Atras');
-
-    this.processSubMenu();
   }
 
-  promptSubMenu() {
-    console.log('Opciones del submenu');
-    console.log(" ", '1.- Hacer movimiento');
-    console.log(" ", '2.- Deshacer movimiento(ctrl+z)');
-    console.log(" ", '3.- Rehacer movimiento(ctrl+y)');
-    console.log(" ", '4.- Historial de movimiento');
-    console.log(" ", '5.- Atras');
-
-    this.processSubMenu();
+  promptSubmenu() {
+    this.submenu();
+    this.processSubmenu();
   }
 
-  processSubMenu() {
-    readline.question('\n¿Elije una opcion? (1-3): ', (answer) => {
+  processSubmenu() {
+    readline.question('\n¿Elije una opcion? (1-5): ', (answer) => {
       switch (answer) {
         case '1':
           this.promptPlayer();
@@ -357,21 +360,22 @@ class TicTacToe extends UIManager {
             this.command = this.commandHistory.pop();
             this.command.undo();
           }
-          this.promptSubMenu();
+          this.promptSubmenu();
           break;
         case '3':
           if (this.command) {
             this.command.execute();
+            this.board.switchPlayer();
             this.commandHistory.push(this.command);
             this.command = null;
           }
-          this.promptSubMenu();
+          this.promptSubmenu();
           break;
         case '4':
           console.log("Movimientos al dia de hoy");
           if (this.commandHistory.length === 0) {
             console.log('No hay movimientos');
-            this.processSubMenu();
+            this.processSubmenu();
             return;
           }
           const logs = this.commandHistory.map((c, index) => ({
@@ -381,13 +385,13 @@ class TicTacToe extends UIManager {
             FICHA: c.player.simbolo
           }));
           console.table(logs);
-          this.promptSubMenu();
+          this.promptSubmenu();
           break;
-          case '5':
+        case '5':
           this.resetGame();
           break;
         default:
-          this.promptBoardSubMenu();
+          this.promptSubmenu();
       }
     });
   }
@@ -395,8 +399,147 @@ class TicTacToe extends UIManager {
 }
 
 
+class TicTacToeFunny extends UIManager {
+  constructor() {
+    super();
+  }
+
+  setupEventListeners() {
+
+    this.on('move', (row, col) => {
+      this.makeMove(row, col);
+    });
+
+    this.on('invalidMove', (message) => {
+      console.log(`❌ ${message}`);
+      this.promptPlayer();
+    });
+
+    this.on('boardUpdated', () => {
+      this.printBoard();
+
+      if (this.gameActive) {
+        this.checkGameStatus();
+        if (this.gameActive) {
+          this.submenu();
+          this.board.switchPlayer();
+          console.log(`Turno del jugador: ${this.board.currentPlayer.simbolo}`);
+          this.processSubmenu();
+        }
+      }
+    });
+
+    this.on('gameWon', (player) => {
+      console.log(`🎉 ¡Jugador ${player.simbolo} gana!`);
+      this.gameActive = false;
+      this.askPlayAgain();
+    });
+
+    this.on('gameTied', () => {
+      console.log('🤝 ¡Empate!');
+      this.gameActive = false;
+      this.askPlayAgain();
+    });
+
+    this.on('restart', () => {
+      this.resetGame();
+    });
+
+  }
+
+  promptMainMenu() {
+    console.log('🎮 TIC TAC TOE - EventEmitter Edition');
+    console.log('=====================================');
+    console.log('Menu principal');
+    console.log(" ", 'i.- Jugar juego');
+    console.log(" ", 'ii.- Configurar player´s');
+    console.log(" ", 'iii.- Salir');
+
+    readline.question('\n¿Elije una opcion? (i-iii): ', (answer) => {
+      if (answer === 'i') {
+        this.promptSubmenuInicial();
+      } else if (answer === 'iii') {
+        console.log('¡Gracias por jugar! 👋');
+        readline.close();
+      } else {
+        this.promptMainMenu();
+      }
+    });
+
+  }
+
+  promptSubmenuInicial() {
+    this.printBoard();
+    this.submenu();
+    console.log(`Turno del jugador: ${this.board.currentPlayer.simbolo}`);
+    this.processSubmenu();
+  }
+
+  submenu() {
+    console.log('Opciones del submenu');
+    console.log(" ", 'i.- Hacer movimiento');
+    console.log(" ", 'ii.- Deshacer movimiento(ctrl+z)');
+    console.log(" ", 'iii.- Rehacer movimiento(ctrl+y)');
+    console.log(" ", 'iv.- Historial de movimiento');
+    console.log(" ", 'v.- Atras');
+  }
+
+  promptSubmenu() {
+    this.submenu();
+    this.processSubmenu();
+  }
+
+  processSubmenu() {
+    readline.question('\n¿Elije una opcion? (i-v): ', (answer) => {
+      switch (answer) {
+        case 'i':
+          this.promptPlayer();
+          break;
+        case 'ii':
+          if (this.commandHistory.length) {
+            this.command = this.commandHistory.pop();
+            this.command.undo();
+          }
+          this.promptSubmenu();
+          break;
+        case 'iii':
+          if (this.command) {
+            this.command.execute();
+            this.board.switchPlayer();
+            this.commandHistory.push(this.command);
+            this.command = null;
+          }
+          this.promptSubmenu();
+          break;
+        case 'iv':
+          console.log("Movimientos al dia de hoy");
+          if (this.commandHistory.length === 0) {
+            console.log('No hay movimientos');
+            this.processSubmenu();
+            return;
+          }
+          const logs = this.commandHistory.map((c, index) => ({
+            MOVIMIENTO: index + 1,
+            FILA: c.row,
+            COLUMNA: c.col,
+            FICHA: c.player.simbolo
+          }));
+          console.table(logs);
+          this.promptSubmenu();
+          break;
+        case 'v':
+          this.resetGame();
+          break;
+        default:
+          this.promptSubmenu();
+      }
+    });
+  }
+
+}
+
 // Ejecutar el juego
-const game = new TicTacToe();
+const game = new TicTacToeFunny();
 game.start();
 
 
